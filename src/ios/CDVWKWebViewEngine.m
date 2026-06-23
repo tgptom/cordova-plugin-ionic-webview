@@ -18,7 +18,6 @@
  */
 
 #import <Cordova/NSDictionary+CordovaPreferences.h>
-#import <MobileCoreServices/MobileCoreServices.h>
 #import <AVFoundation/AVFoundation.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
