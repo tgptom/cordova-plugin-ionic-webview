@@ -70,11 +70,9 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     webView.setWebViewClient(new ServerClient(this, parser));
 
     super.init(parentWebView, cordova, client, resourceApi, pluginManager, nativeToJsMessageQueue);
-    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      final WebSettings settings = webView.getSettings();
-      int mode = preferences.getInteger("MixedContentMode", 0);
-      settings.setMixedContentMode(mode);
-    }
+    final WebSettings settings = webView.getSettings();
+    int mode = preferences.getInteger("MixedContentMode", 0);
+    settings.setMixedContentMode(mode);
     SharedPreferences prefs = cordova.getActivity().getApplicationContext().getSharedPreferences(IonicWebView.WEBVIEW_PREFS_NAME, Activity.MODE_PRIVATE);
     String path = prefs.getString(IonicWebView.CDV_SERVER_PATH, null);
     if (!isDeployDisabled() && !isNewBinary() && path != null && !path.isEmpty()) {
@@ -82,10 +80,9 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     }
 
     boolean setAsServiceWorkerClient = preferences.getBoolean("ResolveServiceWorkerRequests", false);
-    ServiceWorkerController controller = null;
 
-    if (setAsServiceWorkerClient && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
-        controller = ServiceWorkerController.getInstance();
+    if (setAsServiceWorkerClient) {
+        ServiceWorkerController controller = ServiceWorkerController.getInstance();
         controller.setServiceWorkerClient(new ServiceWorkerClient(){
             @Override
             public WebResourceResponse shouldInterceptRequest(WebResourceRequest request) {
@@ -104,7 +101,12 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
 
     try {
       PackageInfo pInfo = this.cordova.getActivity().getPackageManager().getPackageInfo(this.cordova.getActivity().getPackageName(), 0);
-      versionCode = Integer.toString(pInfo.versionCode);
+      if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        versionCode = Long.toString(pInfo.getLongVersionCode());
+      } else {
+        // versionCode is deprecated in API 28, but still needed for API 24-27
+        versionCode = Integer.toString(pInfo.versionCode);
+      }
       versionName = pInfo.versionName;
     } catch(Exception ex) {
       Log.e(TAG, "Unable to get package info", ex);
