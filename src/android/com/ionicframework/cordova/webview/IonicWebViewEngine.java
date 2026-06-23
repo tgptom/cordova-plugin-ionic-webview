@@ -104,6 +104,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
       if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
         versionCode = Long.toString(pInfo.getLongVersionCode());
       } else {
+        // versionCode is deprecated in API 28, but still needed for API 24-27
         versionCode = Integer.toString(pInfo.versionCode);
       }
       versionName = pInfo.versionName;
