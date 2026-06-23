@@ -74,13 +74,11 @@
 
 -(NSString *) getMimeType:(NSString *)fileExtension {
     if (fileExtension && ![fileExtension isEqualToString:@""]) {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
         if (@available(iOS 14.0, *)) {
             UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
             NSString *mimeType = utType.preferredMIMEType;
-            if (mimeType) {
-                return mimeType;
-            }
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
+            return mimeType ? mimeType : @"application/octet-stream";
         } else {
             // Fallback for pre-iOS 14 runtimes when building with a deployment target below iOS 14.
 #pragma clang diagnostic push
@@ -88,12 +86,13 @@
             NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
             NSString *contentType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)UTI, kUTTagClassMIMEType);
 #pragma clang diagnostic pop
-            if (contentType) {
-                return contentType;
-            }
-#endif
+            return contentType ? contentType : @"application/octet-stream";
         }
-        return @"application/octet-stream";
+#else
+        UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
+        NSString *mimeType = utType.preferredMIMEType;
+        return mimeType ? mimeType : @"application/octet-stream";
+#endif
     } else {
         return @"text/html";
     }

@@ -196,6 +196,7 @@ public class WebViewLocalServer {
         finalStatusCode = 404;
       }
     } catch (IOException e) {
+      Log.e(TAG, "Unable to inspect response stream availability", e);
       finalStatusCode = 500;
     }
     return new WebResourceResponse(mimeType, encoding, finalStatusCode, reasonPhrase, responseHeaders, data);
