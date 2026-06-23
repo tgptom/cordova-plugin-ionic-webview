@@ -74,7 +74,7 @@
 
 -(NSString *) getMimeType:(NSString *)fileExtension {
     if (fileExtension && ![fileExtension isEqualToString:@""]) {
-        if (@available(iOS 14, *)) {
+        if (@available(iOS 14.0, *)) {
             UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
             NSString *mimeType = utType.preferredMIMEType;
             if (mimeType) {
@@ -82,7 +82,7 @@
             }
 #if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
         } else {
-            // Fallback for iOS 13.
+            // Fallback for pre-iOS 14 runtimes when building with a deployment target below iOS 14.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
