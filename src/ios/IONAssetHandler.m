@@ -1,5 +1,6 @@
 #import "IONAssetHandler.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+// Required for the iOS 13 MIME type fallback in getMimeType:.
 #import <MobileCoreServices/MobileCoreServices.h>
 #import "CDVWKWebViewEngine.h"
 
@@ -77,6 +78,7 @@
             NSString *mimeType = utType.preferredMIMEType;
             return mimeType ? mimeType : @"application/octet-stream";
         } else {
+            // Fallback for iOS 13.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
