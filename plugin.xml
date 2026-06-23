@@ -19,7 +19,7 @@
   under the License.
 -->
 
-<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:rim="http://www.blackberry.com/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-ionic-webview" version="5.0.2">
+<plugin xmlns="http://apache.org/cordova/ns/plugins/1.0" xmlns:rim="http://www.blackberry.com/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android" id="cordova-plugin-ionic-webview" version="5.0.3">
     <name>cordova-plugin-ionic-webview</name>
     <description>Ionic Web View Engine Plugin</description>
     <license>Apache-2.0</license>
@@ -28,9 +28,9 @@
 
 	<engines>
         <engine name="cordova" version=">=7.1.0"/>
-        <engine name="cordova-ios" version=">=4.0.0-dev"/>
-        <engine name="apple-ios" version=">=11.0"/>
-        <engine name="cordova-android" version=">=6.4.0"/>
+        <engine name="cordova-ios" version=">=6.0.0"/>
+        <engine name="apple-ios" version=">=13.0"/>
+        <engine name="cordova-android" version=">=12.0.0"/>
 	</engines>
 
   <js-module src="src/www/util.js" name="IonicWebView">

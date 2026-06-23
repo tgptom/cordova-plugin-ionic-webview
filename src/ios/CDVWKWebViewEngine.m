@@ -34,50 +34,6 @@
 #define LAST_BINARY_VERSION_CODE @"lastBinaryVersionCode"
 #define LAST_BINARY_VERSION_NAME @"lastBinaryVersionName"
 
-@implementation UIScrollView (BugIOS11)
-
-+ (void)load {
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        Class class = [self class];
-        SEL originalSelector = @selector(init);
-        SEL swizzledSelector = @selector(xxx_init);
-
-        Method originalMethod = class_getInstanceMethod(class, originalSelector);
-        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
-
-        BOOL didAddMethod =
-        class_addMethod(class,
-                        originalSelector,
-                        method_getImplementation(swizzledMethod),
-                        method_getTypeEncoding(swizzledMethod));
-
-        if (didAddMethod) {
-            class_replaceMethod(class,
-                                swizzledSelector,
-                                method_getImplementation(originalMethod),
-                                method_getTypeEncoding(originalMethod));
-        } else {
-            method_exchangeImplementations(originalMethod, swizzledMethod);
-        }
-    });
-}
-
-#pragma mark - Method Swizzling
-
-- (id)xxx_init {
-    id a = [self xxx_init];
-    NSArray *stack = [NSThread callStackSymbols];
-    for(NSString *trace in stack) {
-        if([trace containsString:@"WebKit"]) {
-            [a setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentNever];
-            break;
-        }
-    }
-    return a;
-}
-
-@end
 
 
 @interface CDVWKWeakScriptMessageHandler : NSObject <WKScriptMessageHandler>
@@ -114,6 +70,19 @@
 
 @synthesize engineWebView = _engineWebView;
 
+- (UIWindow *)activeKeyWindow {
+    if (@available(iOS 13.0, *)) {
+        for (UIWindowScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive) {
+                for (UIWindow *window in scene.windows) {
+                    if (window.isKeyWindow) return window;
+                }
+            }
+        }
+    }
+    return UIApplication.sharedApplication.keyWindow;
+}
+
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super init];
@@ -122,7 +91,7 @@
             return nil;
         }
         // add to keyWindow to ensure it is 'active'
-        [UIApplication.sharedApplication.keyWindow addSubview:self.engineWebView];
+        [[self activeKeyWindow] addSubview:self.engineWebView];
 
         self.frame = frame;
     }
@@ -273,7 +242,7 @@
     wkWebView.UIDelegate = self.uiDelegate;
     self.engineWebView = wkWebView;
     // add to keyWindow to ensure it is 'active'
-    [UIApplication.sharedApplication.keyWindow addSubview:self.engineWebView];
+    [[self activeKeyWindow] addSubview:self.engineWebView];
 
     NSString * overrideUserAgent = [settings cordovaSettingForKey:@"OverrideUserAgent"];
     if (overrideUserAgent != nil) {
@@ -293,8 +262,6 @@
     if ([self.viewController conformsToProtocol:@protocol(WKScriptMessageHandler)]) {
         [wkWebView.configuration.userContentController addScriptMessageHandler:(id < WKScriptMessageHandler >)self.viewController name:CDV_BRIDGE_NAME];
     }
-
-    [self keyboardDisplayDoesNotRequireUserAction];
 
     if ([settings cordovaBoolSettingForKey:@"KeyboardAppearanceDark" defaultValue:NO]) {
         [self setKeyboardAppearanceDark];
@@ -334,39 +301,6 @@
 
     NSLog(@"Using Ionic WKWebView");
 
-}
-
-// https://github.com/Telerik-Verified-Plugins/WKWebView/commit/04e8296adeb61f289f9c698045c19b62d080c7e3#L609-L620
-- (void) keyboardDisplayDoesNotRequireUserAction {
-    Class class = NSClassFromString(@"WKContentView");
-    NSOperatingSystemVersion iOS_11_3_0 = (NSOperatingSystemVersion){11, 3, 0};
-    NSOperatingSystemVersion iOS_12_2_0 = (NSOperatingSystemVersion){12, 2, 0};
-    NSOperatingSystemVersion iOS_13_0_0 = (NSOperatingSystemVersion){13, 0, 0};
-    char * methodSignature = "_startAssistingNode:userIsInteracting:blurPreviousNode:changingActivityState:userObject:";
-
-    if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_13_0_0]) {
-         methodSignature = "_elementDidFocus:userIsInteracting:blurPreviousNode:activityStateChanges:userObject:";
-     } else if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_12_2_0]) {
-        methodSignature = "_elementDidFocus:userIsInteracting:blurPreviousNode:changingActivityState:userObject:";
-    }
-
-    if ([[NSProcessInfo processInfo] isOperatingSystemAtLeastVersion: iOS_11_3_0]) {
-        SEL selector = sel_getUid(methodSignature);
-        Method method = class_getInstanceMethod(class, selector);
-        IMP original = method_getImplementation(method);
-        IMP override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, BOOL arg3, id arg4) {
-            ((void (*)(id, SEL, void*, BOOL, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3, arg4);
-        });
-        method_setImplementation(method, override);
-    } else {
-        SEL selector = sel_getUid("_startAssistingNode:userIsInteracting:blurPreviousNode:userObject:");
-        Method method = class_getInstanceMethod(class, selector);
-        IMP original = method_getImplementation(method);
-        IMP override = imp_implementationWithBlock(^void(id me, void* arg0, BOOL arg1, BOOL arg2, id arg3) {
-            ((void (*)(id, SEL, void*, BOOL, BOOL, id))original)(me, selector, arg0, TRUE, arg2, arg3);
-        });
-        method_setImplementation(method, override);
-    }
 }
 
 - (void)setKeyboardAppearanceDark
