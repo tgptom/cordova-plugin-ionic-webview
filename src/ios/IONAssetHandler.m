@@ -1,7 +1,8 @@
 #import "IONAssetHandler.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
-// Required for the iOS 13 MIME type fallback in getMimeType:.
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
 #import <MobileCoreServices/MobileCoreServices.h>
+#endif
 #import "CDVWKWebViewEngine.h"
 
 @implementation IONAssetHandler
@@ -76,7 +77,10 @@
         if (@available(iOS 14, *)) {
             UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
             NSString *mimeType = utType.preferredMIMEType;
-            return mimeType ? mimeType : @"application/octet-stream";
+            if (mimeType) {
+                return mimeType;
+            }
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
         } else {
             // Fallback for iOS 13.
 #pragma clang diagnostic push
@@ -84,8 +88,12 @@
             NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
             NSString *contentType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)UTI, kUTTagClassMIMEType);
 #pragma clang diagnostic pop
-            return contentType ? contentType : @"application/octet-stream";
+            if (contentType) {
+                return contentType;
+            }
+#endif
         }
+        return @"application/octet-stream";
     } else {
         return @"text/html";
     }
