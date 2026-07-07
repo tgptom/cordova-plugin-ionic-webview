@@ -24,7 +24,7 @@
     <description>Ionic Web View Engine Plugin</description>
     <license>Apache-2.0</license>
     <keywords>cordova,wkwebview</keywords>
-    <repo>https://github.com/ionic-team/cordova-plugin-ionic-webview</repo>
+    <repo>https://github.com/tgptom/cordova-plugin-ionic-webview</repo>
 
 	<engines>
         <engine name="cordova" version=">=7.1.0"/>
@@ -80,6 +80,6 @@
     <source-file src="src/ios/IONAssetHandler.m"/>
     <asset src="src/ios/wk-plugin.js" target="wk-plugin.js"/>
   </platform>
-  <issue>https://github.com/ionic-team/cordova-plugin-ionic-webview/issues</issue>
+  <issue>https://github.com/tgptom/cordova-plugin-ionic-webview/issues</issue>
   <author>Ionic Team</author>
 </plugin>

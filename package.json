@@ -9,10 +9,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ionic-team/cordova-plugin-ionic-webview"
+    "url": "https://github.com/tgptom/cordova-plugin-ionic-webview"
   },
   "bugs": {
-    "url": "https://github.com/ionic-team/cordova-plugin-ionic-webview/issues"
+    "url": "https://github.com/tgptom/cordova-plugin-ionic-webview/issues"
   },
   "keywords": [
     "cordova",
