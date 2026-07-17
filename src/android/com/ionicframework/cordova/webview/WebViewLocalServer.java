@@ -190,19 +190,16 @@ public class WebViewLocalServer {
   }
   
   private static WebResourceResponse createWebResourceResponse(String mimeType, String encoding, int statusCode, String reasonPhrase, Map<String, String> responseHeaders, InputStream data) {
-    if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-      int finalStatusCode = statusCode;
-      try {
-        if (data.available() == 0) {
-          finalStatusCode = 404;
-        }
-      } catch (IOException e) {
-        finalStatusCode = 500;
+    int finalStatusCode = statusCode;
+    try {
+      if (data.available() == 0) {
+        finalStatusCode = 404;
       }
-      return new WebResourceResponse(mimeType, encoding, finalStatusCode, reasonPhrase, responseHeaders, data);
-    } else {
-      return new WebResourceResponse(mimeType, encoding, data);
+    } catch (IOException e) {
+      Log.e(TAG, "Unable to inspect response stream availability", e);
+      finalStatusCode = 500;
     }
+    return new WebResourceResponse(mimeType, encoding, finalStatusCode, reasonPhrase, responseHeaders, data);
   }
 
   /**
@@ -345,9 +342,9 @@ public class WebViewLocalServer {
                 handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), stream);
 
     } catch (SocketTimeoutException ex) {
-      // bridge.handleAppUrlLoadError(ex);
+      Log.e(TAG, "Proxy request timed out: " + uri, ex);
     } catch (Exception ex) {
-      // bridge.handleAppUrlLoadError(ex);
+      Log.e(TAG, "Proxy request failed: " + uri, ex);
     }
     return null;
   }

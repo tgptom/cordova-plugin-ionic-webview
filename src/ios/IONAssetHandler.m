@@ -1,5 +1,8 @@
 #import "IONAssetHandler.h"
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
 #import <MobileCoreServices/MobileCoreServices.h>
+#endif
 #import "CDVWKWebViewEngine.h"
 
 @implementation IONAssetHandler
@@ -71,9 +74,25 @@
 
 -(NSString *) getMimeType:(NSString *)fileExtension {
     if (fileExtension && ![fileExtension isEqualToString:@""]) {
-        NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
-        NSString *contentType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)UTI, kUTTagClassMIMEType);
-        return contentType ? contentType : @"application/octet-stream";
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 140000
+        if (@available(iOS 14.0, *)) {
+            UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
+            NSString *mimeType = utType.preferredMIMEType;
+            return mimeType ? mimeType : @"application/octet-stream";
+        } else {
+            // Fallback for pre-iOS 14 runtimes when building with a deployment target below iOS 14.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            NSString *UTI = (__bridge_transfer NSString *)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, (__bridge CFStringRef)fileExtension, NULL);
+            NSString *contentType = (__bridge_transfer NSString *)UTTypeCopyPreferredTagWithClass((__bridge CFStringRef)UTI, kUTTagClassMIMEType);
+#pragma clang diagnostic pop
+            return contentType ? contentType : @"application/octet-stream";
+        }
+#else
+        UTType *utType = [UTType typeWithFilenameExtension:fileExtension];
+        NSString *mimeType = utType.preferredMIMEType;
+        return mimeType ? mimeType : @"application/octet-stream";
+#endif
     } else {
         return @"text/html";
     }
