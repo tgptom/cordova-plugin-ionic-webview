@@ -140,7 +140,6 @@ When enabled, the same DOM/computed-style payload is logged so marker geometry c
 Default value is `false`.
 
 Force Android WebView software rendering as a compatibility workaround for problematic devices. This is diagnostic/compatibility-only and may reduce rendering performance.
-This is not a fix for the confirmed `cordova-android` 15.x + `cordova-plugin-statusbar` blank-screen interaction.
 
 #### IonicWebViewForceRepaint
 
@@ -151,7 +150,6 @@ This is not a fix for the confirmed `cordova-android` 15.x + `cordova-plugin-sta
 Default value is `false`.
 
 Apply an opt-in repaint workaround after page load by forcing a WebView visibility/layout refresh. This is intended for diagnostics/compatibility testing only.
-This is not a fix for the confirmed `cordova-android` 15.x + `cordova-plugin-statusbar` blank-screen interaction.
 
 Example diagnostic `config.xml` entries:
 
