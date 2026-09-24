@@ -105,9 +105,19 @@ Other possible values are `1` (`MIXED_CONTENT_NEVER_ALLOW`) and `2` (`MIXED_CONT
 
 Default value is `false`.
 
-Enable verbose Android WebView render-state diagnostics (device/build info, view geometry, visibility/attachment, layer/hardware state, active WebView package when available, and FrameLayout margin/gravity details).
+Enable passive Android WebView diagnostics only: render-state logs (device/build info, view geometry, visibility/attachment, layer/hardware state, active WebView package when available, and FrameLayout margin/gravity details) plus a compact DOM/computed-style payload from `onPageFinished`.
 
-When enabled, diagnostics add/update two visual markers:
+Passive diagnostics do **not** intentionally add visible markers or modify native UI.
+
+#### IonicWebViewEnableVisualDiagnostics
+
+```xml
+<preference name="IonicWebViewEnableVisualDiagnostics" value="true" />
+```
+
+Default value is `false`.
+
+Enable visible troubleshooting markers:
 
 - Red HTML/DOM marker at the top of the page (`__ionic_webview_diagnostic`, text: `WEBVIEW CONTENT IS RENDERING`).
 - Green native Android marker at the bottom of the WebView parent (`__ionic_native_diagnostic`, text: `NATIVE VIEW IS RENDERING`).
@@ -118,7 +128,8 @@ Interpretation:
 - Neither visible: another native window/view may be covering the activity.
 - Both visible: WebView output is painting; continue investigation in application CSS/UI state.
 
-When enabled, `onPageFinished` also logs a compact DOM/computed-style diagnostic payload (document/body/html style state, marker bounds, viewport metrics, and center-point `elementFromPoint` inspection). These diagnostics are troubleshooting-only and temporarily modify page DOM.
+Visual diagnostics are troubleshooting-only and intentionally modify visible UI/DOM.
+When enabled, the same DOM/computed-style payload is logged so marker geometry can be inspected alongside passive diagnostics.
 
 #### IonicWebViewForceSoftwareRendering
 
@@ -129,6 +140,7 @@ When enabled, `onPageFinished` also logs a compact DOM/computed-style diagnostic
 Default value is `false`.
 
 Force Android WebView software rendering as a compatibility workaround for problematic devices. This is diagnostic/compatibility-only and may reduce rendering performance.
+This is not a fix for the confirmed `cordova-android` 15.x + `cordova-plugin-statusbar` blank-screen interaction.
 
 #### IonicWebViewForceRepaint
 
@@ -139,11 +151,13 @@ Force Android WebView software rendering as a compatibility workaround for probl
 Default value is `false`.
 
 Apply an opt-in repaint workaround after page load by forcing a WebView visibility/layout refresh. This is intended for diagnostics/compatibility testing only.
+This is not a fix for the confirmed `cordova-android` 15.x + `cordova-plugin-statusbar` blank-screen interaction.
 
 Example diagnostic `config.xml` entries:
 
 ```xml
 <preference name="IonicWebViewEnableRenderDiagnostics" value="true" />
+<preference name="IonicWebViewEnableVisualDiagnostics" value="true" />
 <preference name="IonicWebViewForceSoftwareRendering" value="true" />
 <preference name="IonicWebViewForceRepaint" value="true" />
 ```
