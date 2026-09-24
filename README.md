@@ -105,7 +105,9 @@ Other possible values are `1` (`MIXED_CONTENT_NEVER_ALLOW`) and `2` (`MIXED_CONT
 
 Default value is `false`.
 
-Enable verbose Android WebView render-state diagnostics (device/build info, view geometry, visibility/attachment, layer/hardware state, and active WebView package when available). This is intended for troubleshooting only.
+Enable verbose Android WebView render-state diagnostics (device/build info, view geometry, visibility/attachment, layer/hardware state, active WebView package when available, and FrameLayout margin/gravity details).
+
+When enabled, `onPageFinished` also injects/updates a temporary fixed visual marker (`__ionic_webview_diagnostic`) in the page and logs a compact DOM/computed-style diagnostic payload (document/body/html style state, marker bounds, viewport metrics, and center-point `elementFromPoint` inspection). This temporarily modifies the page DOM and is troubleshooting-only.
 
 #### IonicWebViewForceSoftwareRendering
 
