@@ -8,6 +8,8 @@ import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.ServiceWorkerController;
 import android.webkit.ServiceWorkerClient;
 import android.webkit.WebResourceRequest;
@@ -34,6 +36,11 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
   private String scheme;
   private static final String LAST_BINARY_VERSION_CODE = "lastBinaryVersionCode";
   private static final String LAST_BINARY_VERSION_NAME = "lastBinaryVersionName";
+  private static final String PREF_FORCE_SOFTWARE_RENDERING = "IonicWebViewForceSoftwareRendering";
+  private static final String PREF_FORCE_REPAINT = "IonicWebViewForceRepaint";
+  private static final String PREF_ENABLE_RENDER_DIAGNOSTICS = "IonicWebViewEnableRenderDiagnostics";
+  private boolean forceRepaint;
+  private boolean enableRenderDiagnostics;
 
   /**
    * Used when created via reflection.
@@ -70,9 +77,27 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     webView.setWebViewClient(new ServerClient(this, parser));
 
     super.init(parentWebView, cordova, client, resourceApi, pluginManager, nativeToJsMessageQueue);
+    forceRepaint = preferences.getBoolean(PREF_FORCE_REPAINT, false);
+    enableRenderDiagnostics = preferences.getBoolean(PREF_ENABLE_RENDER_DIAGNOSTICS, false);
+
+    boolean forceSoftwareRendering = preferences.getBoolean(PREF_FORCE_SOFTWARE_RENDERING, false);
+    if (forceSoftwareRendering) {
+      webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+      Log.w(TAG, "IonicWebViewForceSoftwareRendering enabled: forcing WebView software rendering. This may reduce performance.");
+    }
+
     final WebSettings settings = webView.getSettings();
     int mode = preferences.getInteger("MixedContentMode", 0);
     settings.setMixedContentMode(mode);
+
+    logRenderState("init", webView.getUrl());
+    webView.postDelayed(new Runnable() {
+      @Override
+      public void run() {
+        logRenderState("init_delayed_3s", webView.getUrl());
+      }
+    }, 3000);
+
     SharedPreferences prefs = cordova.getActivity().getApplicationContext().getSharedPreferences(IonicWebView.WEBVIEW_PREFS_NAME, Activity.MODE_PRIVATE);
     String path = prefs.getString(IonicWebView.CDV_SERVER_PATH, null);
     if (!isDeployDisabled() && !isNewBinary() && path != null && !path.isEmpty()) {
@@ -90,6 +115,65 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
             }
         });
     }
+  }
+
+  private void logRenderState(String eventName, String url) {
+    if (!enableRenderDiagnostics) {
+      return;
+    }
+
+    String webViewPackage = "unavailable";
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+      try {
+        PackageInfo webViewPackageInfo = WebView.getCurrentWebViewPackage();
+        if (webViewPackageInfo != null) {
+          String packageName = webViewPackageInfo.packageName != null ? webViewPackageInfo.packageName : "unknown";
+          String packageVersion = webViewPackageInfo.versionName != null ? webViewPackageInfo.versionName : "unknown";
+          webViewPackage = packageName + "@" + packageVersion;
+        } else {
+          webViewPackage = "null";
+        }
+      } catch (Exception ex) {
+        webViewPackage = "error:" + ex.getClass().getSimpleName();
+      }
+    } else {
+      webViewPackage = "unsupported_api";
+    }
+
+    Object parent = webView.getParent();
+    ViewGroup.LayoutParams params = webView.getLayoutParams();
+    String parentDescription = parent == null ? "null" : parent.getClass().getName() + ":" + parent.toString();
+    String paramsDescription = params == null ? "null" : params.getClass().getName() + "(width=" + params.width + ",height=" + params.height + ")";
+
+    Log.d(TAG, "RenderState"
+        + " event=" + eventName
+        + " url=" + (url != null ? url : "null")
+        + " sdk=" + Build.VERSION.SDK_INT
+        + " manufacturer=" + Build.MANUFACTURER
+        + " model=" + Build.MODEL
+        + " webViewPackage=" + webViewPackage
+        + " attached=" + (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT ? webView.isAttachedToWindow() : "unsupported_api")
+        + " shown=" + webView.isShown()
+        + " visibility=" + webView.getVisibility()
+        + " width=" + webView.getWidth()
+        + " height=" + webView.getHeight()
+        + " x=" + webView.getX()
+        + " y=" + webView.getY()
+        + " alpha=" + webView.getAlpha()
+        + " hardwareAccelerated=" + webView.isHardwareAccelerated()
+        + " layerType=" + layerTypeToString(webView.getLayerType())
+        + " parent=" + parentDescription
+        + " layoutParams=" + paramsDescription);
+  }
+
+  private String layerTypeToString(int layerType) {
+    if (layerType == View.LAYER_TYPE_HARDWARE) {
+      return "hardware";
+    }
+    if (layerType == View.LAYER_TYPE_SOFTWARE) {
+      return "software";
+    }
+    return "none";
   }
 
   private boolean isNewBinary() {
@@ -157,6 +241,29 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     @Override
     public void onPageFinished(WebView view, String url) {
       super.onPageFinished(view, url);
+      logRenderState("onPageFinished", url);
+      if (forceRepaint) {
+        final WebView finishedView = view;
+        Log.w(TAG, "IonicWebViewForceRepaint enabled: applying post-finish repaint workaround.");
+        finishedView.post(new Runnable() {
+          @Override
+          public void run() {
+            finishedView.setVisibility(View.INVISIBLE);
+            finishedView.requestLayout();
+            finishedView.invalidate();
+            finishedView.post(new Runnable() {
+              @Override
+              public void run() {
+                finishedView.setVisibility(View.VISIBLE);
+                finishedView.requestLayout();
+                finishedView.invalidate();
+                Log.w(TAG, "IonicWebViewForceRepaint applied.");
+                logRenderState("forceRepaintApplied", finishedView.getUrl());
+              }
+            });
+          }
+        });
+      }
       view.loadUrl("javascript:(function() { " +
               "window.WEBVIEW_SERVER_URL = '" + CDV_LOCAL_SERVER + "';" +
               "})()");

@@ -97,6 +97,44 @@ Other possible values are `1` (`MIXED_CONTENT_NEVER_ALLOW`) and `2` (`MIXED_CONT
 
 [Android documentation](https://developer.android.com/reference/android/webkit/WebSettings.html#setMixedContentMode(int))
 
+#### IonicWebViewEnableRenderDiagnostics
+
+```xml
+<preference name="IonicWebViewEnableRenderDiagnostics" value="true" />
+```
+
+Default value is `false`.
+
+Enable verbose Android WebView render-state diagnostics (device/build info, view geometry, visibility/attachment, layer/hardware state, and active WebView package when available). This is intended for troubleshooting only.
+
+#### IonicWebViewForceSoftwareRendering
+
+```xml
+<preference name="IonicWebViewForceSoftwareRendering" value="true" />
+```
+
+Default value is `false`.
+
+Force Android WebView software rendering as a compatibility workaround for problematic devices. This is diagnostic/compatibility-only and may reduce rendering performance.
+
+#### IonicWebViewForceRepaint
+
+```xml
+<preference name="IonicWebViewForceRepaint" value="true" />
+```
+
+Default value is `false`.
+
+Apply an opt-in repaint workaround after page load by forcing a WebView visibility/layout refresh. This is intended for diagnostics/compatibility testing only.
+
+Example diagnostic `config.xml` entries:
+
+```xml
+<preference name="IonicWebViewEnableRenderDiagnostics" value="true" />
+<preference name="IonicWebViewForceSoftwareRendering" value="true" />
+<preference name="IonicWebViewForceRepaint" value="true" />
+```
+
 
 ### iOS Preferences
 
