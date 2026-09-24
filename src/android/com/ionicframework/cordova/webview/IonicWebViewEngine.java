@@ -263,7 +263,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
         if (marker == null) {
           marker = new TextView(webView.getContext());
           marker.setTag(NATIVE_DIAGNOSTIC_TAG);
-          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setText("");
           marker.setTextColor(Color.WHITE);
           marker.setBackgroundColor(Color.rgb(0, 160, 0));
           marker.setTextSize(16);
@@ -280,7 +280,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
           parent.addView(marker, params);
           Log.w(TAG, "Native diagnostic marker added (" + trigger + ") attempt=" + attempt);
         } else {
-          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setText("");
           marker.setTextColor(Color.WHITE);
           marker.setBackgroundColor(Color.rgb(0, 160, 0));
           marker.setTextSize(16);
@@ -350,11 +350,10 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
         + "      marker.id = markerId;"
         + "    }"
         + "    if (includeMarker && marker) {"
-        + "      marker.textContent = 'WEBVIEW CONTENT IS RENDERING';"
+        + "      marker.textContent = '';"
         + "      marker.setAttribute('aria-hidden', 'true');"
         + "      marker.style.cssText = 'position:fixed!important;left:8px!important;right:8px!important;top:8px!important;min-height:48px!important;"
-        + "display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important;background:#ff0000!important;color:#ffffff!important;"
-        + "font-size:20px!important;line-height:1.25!important;font-weight:700!important;text-align:center!important;padding:12px 8px!important;box-sizing:border-box!important;"
+        + "display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important;background:#ff0000!important;box-sizing:border-box!important;"
         + "pointer-events:none!important;margin:0!important;transform:none!important;max-width:none!important;';"
         + "      if (!marker.parentNode && root) {"
         + "        root.appendChild(marker);"

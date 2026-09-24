@@ -119,8 +119,8 @@ Default value is `false`.
 
 Enable visible troubleshooting markers:
 
-- Red HTML/DOM marker at the top of the page (`__ionic_webview_diagnostic`, text: `WEBVIEW CONTENT IS RENDERING`).
-- Green native Android marker at the bottom of the WebView parent (`__ionic_native_diagnostic`, text: `NATIVE VIEW IS RENDERING`).
+- Red HTML/DOM color marker at the top of the page (`__ionic_webview_diagnostic`).
+- Green native Android color marker at the bottom of the WebView parent (`__ionic_native_diagnostic`).
 
 Interpretation:
 
