@@ -5,9 +5,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.ServiceWorkerController;
@@ -18,6 +20,7 @@ import android.webkit.WebSettings;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import org.apache.cordova.ConfigXmlParser;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPreferences;
@@ -41,6 +44,9 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
   private static final String PREF_FORCE_SOFTWARE_RENDERING = "IonicWebViewForceSoftwareRendering";
   private static final String PREF_FORCE_REPAINT = "IonicWebViewForceRepaint";
   private static final String PREF_ENABLE_RENDER_DIAGNOSTICS = "IonicWebViewEnableRenderDiagnostics";
+  private static final String NATIVE_DIAGNOSTIC_TAG = "__ionic_native_diagnostic";
+  private static final int NATIVE_DIAGNOSTIC_MAX_ATTACH_RETRIES = 5;
+  private static final int NATIVE_DIAGNOSTIC_RETRY_DELAY_MS = 75;
   private boolean forceRepaint;
   private boolean enableRenderDiagnostics;
 
@@ -93,6 +99,9 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     settings.setMixedContentMode(mode);
 
     logRenderState("init", webView.getUrl());
+    if (enableRenderDiagnostics) {
+      ensureNativeDiagnosticMarker("init", 0);
+    }
     webView.postDelayed(new Runnable() {
       @Override
       public void run() {
@@ -192,6 +201,130 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
       return "software";
     }
     return "none";
+  }
+
+  private void ensureNativeDiagnosticMarker(final String trigger, final int attempt) {
+    if (!enableRenderDiagnostics || webView == null) {
+      return;
+    }
+
+    webView.post(new Runnable() {
+      @Override
+      public void run() {
+        if (!enableRenderDiagnostics || webView == null) {
+          return;
+        }
+
+        Object parentObject = webView.getParent();
+        boolean attached = Build.VERSION.SDK_INT < Build.VERSION_CODES.KITKAT || webView.isAttachedToWindow();
+        if (!attached || parentObject == null) {
+          if (attempt < NATIVE_DIAGNOSTIC_MAX_ATTACH_RETRIES) {
+            final int nextAttempt = attempt + 1;
+            webView.postDelayed(new Runnable() {
+              @Override
+              public void run() {
+                if (enableRenderDiagnostics && webView != null) {
+                  ensureNativeDiagnosticMarker(trigger, nextAttempt);
+                } else if (nextAttempt >= NATIVE_DIAGNOSTIC_MAX_ATTACH_RETRIES) {
+                  Log.w(TAG, "Native diagnostic marker skipped (" + trigger + "): parent unavailable after retries.");
+                }
+              }
+            }, NATIVE_DIAGNOSTIC_RETRY_DELAY_MS);
+          } else {
+            Log.w(TAG, "Native diagnostic marker skipped (" + trigger + "): parent unavailable or WebView detached.");
+          }
+          return;
+        }
+
+        if (!(parentObject instanceof FrameLayout)) {
+          Log.w(TAG, "Native diagnostic marker skipped (" + trigger + "): parent is "
+              + parentObject.getClass().getName() + ", expected FrameLayout.");
+          return;
+        }
+
+        final FrameLayout parent = (FrameLayout) parentObject;
+        View existingView = parent.findViewWithTag(NATIVE_DIAGNOSTIC_TAG);
+        TextView marker = null;
+        if (existingView instanceof TextView) {
+          marker = (TextView) existingView;
+        } else if (existingView != null) {
+          parent.removeView(existingView);
+          Log.w(TAG, "Native diagnostic marker replaced (" + trigger + "): non-TextView with marker tag found.");
+        }
+
+        int horizontalMarginPx = dpToPx(8);
+        int bottomMarginPx = dpToPx(12);
+        int minHeightPx = dpToPx(56);
+
+        if (marker == null) {
+          marker = new TextView(webView.getContext());
+          marker.setTag(NATIVE_DIAGNOSTIC_TAG);
+          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setTextColor(Color.WHITE);
+          marker.setBackgroundColor(Color.rgb(0, 160, 0));
+          marker.setTextSize(16);
+          marker.setGravity(Gravity.CENTER);
+          marker.setVisibility(View.VISIBLE);
+          FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+              ViewGroup.LayoutParams.MATCH_PARENT,
+              minHeightPx
+          );
+          params.gravity = Gravity.BOTTOM;
+          params.leftMargin = horizontalMarginPx;
+          params.rightMargin = horizontalMarginPx;
+          params.bottomMargin = bottomMarginPx;
+          parent.addView(marker, params);
+          Log.w(TAG, "Native diagnostic marker added (" + trigger + ") attempt=" + attempt);
+        } else {
+          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setTextColor(Color.WHITE);
+          marker.setBackgroundColor(Color.rgb(0, 160, 0));
+          marker.setTextSize(16);
+          marker.setGravity(Gravity.CENTER);
+          marker.setVisibility(View.VISIBLE);
+          FrameLayout.LayoutParams params;
+          ViewGroup.LayoutParams existingParams = marker.getLayoutParams();
+          if (existingParams instanceof FrameLayout.LayoutParams) {
+            params = (FrameLayout.LayoutParams) existingParams;
+          } else {
+            params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                minHeightPx
+            );
+          }
+          params.width = ViewGroup.LayoutParams.MATCH_PARENT;
+          params.height = minHeightPx;
+          params.gravity = Gravity.BOTTOM;
+          params.leftMargin = horizontalMarginPx;
+          params.rightMargin = horizontalMarginPx;
+          params.bottomMargin = bottomMarginPx;
+          marker.setLayoutParams(params);
+          Log.w(TAG, "Native diagnostic marker reused and brought to front (" + trigger + ").");
+        }
+
+        marker.bringToFront();
+        parent.requestLayout();
+        parent.invalidate();
+        final TextView layoutMarker = marker;
+        parent.post(new Runnable() {
+          @Override
+          public void run() {
+            Log.w(TAG, "Native diagnostic marker layout (" + trigger + "):"
+                + " shown=" + layoutMarker.isShown()
+                + " visibility=" + layoutMarker.getVisibility()
+                + " width=" + layoutMarker.getWidth()
+                + " height=" + layoutMarker.getHeight()
+                + " x=" + layoutMarker.getX()
+                + " y=" + layoutMarker.getY());
+          }
+        });
+      }
+    });
+  }
+
+  private int dpToPx(int dp) {
+    float density = webView.getContext().getResources().getDisplayMetrics().density;
+    return Math.max(1, Math.round(dp * density));
   }
 
   private void runDomDiagnostics(WebView view) {
@@ -383,6 +516,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
       super.onPageFinished(view, url);
       logRenderState("onPageFinished", url);
       if (enableRenderDiagnostics) {
+        ensureNativeDiagnosticMarker("onPageFinished", 0);
         runDomDiagnostics(view);
       }
       if (forceRepaint) {

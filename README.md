@@ -107,7 +107,18 @@ Default value is `false`.
 
 Enable verbose Android WebView render-state diagnostics (device/build info, view geometry, visibility/attachment, layer/hardware state, active WebView package when available, and FrameLayout margin/gravity details).
 
-When enabled, `onPageFinished` also injects/updates a temporary fixed visual marker (`__ionic_webview_diagnostic`) in the page and logs a compact DOM/computed-style diagnostic payload (document/body/html style state, marker bounds, viewport metrics, and center-point `elementFromPoint` inspection). This temporarily modifies the page DOM and is troubleshooting-only.
+When enabled, diagnostics add/update two visual markers:
+
+- Red HTML/DOM marker at the top of the page (`__ionic_webview_diagnostic`, text: `WEBVIEW CONTENT IS RENDERING`).
+- Green native Android marker at the bottom of the WebView parent (`__ionic_native_diagnostic`, text: `NATIVE VIEW IS RENDERING`).
+
+Interpretation:
+
+- Green visible, red absent: native hierarchy renders, but WebView content is not being painted/presented.
+- Neither visible: another native window/view may be covering the activity.
+- Both visible: WebView output is painting; continue investigation in application CSS/UI state.
+
+When enabled, `onPageFinished` also logs a compact DOM/computed-style diagnostic payload (document/body/html style state, marker bounds, viewport metrics, and center-point `elementFromPoint` inspection). These diagnostics are troubleshooting-only and temporarily modify page DOM.
 
 #### IonicWebViewForceSoftwareRendering
 
