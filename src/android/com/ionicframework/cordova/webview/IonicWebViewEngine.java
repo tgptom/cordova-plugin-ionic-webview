@@ -21,6 +21,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
+import org.json.JSONObject;
 import org.apache.cordova.ConfigXmlParser;
 import org.apache.cordova.CordovaInterface;
 import org.apache.cordova.CordovaPreferences;
@@ -44,11 +45,13 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
   private static final String PREF_FORCE_SOFTWARE_RENDERING = "IonicWebViewForceSoftwareRendering";
   private static final String PREF_FORCE_REPAINT = "IonicWebViewForceRepaint";
   private static final String PREF_ENABLE_RENDER_DIAGNOSTICS = "IonicWebViewEnableRenderDiagnostics";
+  private static final String PREF_ENABLE_VISUAL_DIAGNOSTICS = "IonicWebViewEnableVisualDiagnostics";
   private static final String NATIVE_DIAGNOSTIC_TAG = "__ionic_native_diagnostic";
   private static final int NATIVE_DIAGNOSTIC_MAX_ATTACH_RETRIES = 5;
   private static final int NATIVE_DIAGNOSTIC_RETRY_DELAY_MS = 75;
   private boolean forceRepaint;
   private boolean enableRenderDiagnostics;
+  private boolean enableVisualDiagnostics;
 
   /**
    * Used when created via reflection.
@@ -87,6 +90,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     super.init(parentWebView, cordova, client, resourceApi, pluginManager, nativeToJsMessageQueue);
     forceRepaint = preferences.getBoolean(PREF_FORCE_REPAINT, false);
     enableRenderDiagnostics = preferences.getBoolean(PREF_ENABLE_RENDER_DIAGNOSTICS, false);
+    enableVisualDiagnostics = preferences.getBoolean(PREF_ENABLE_VISUAL_DIAGNOSTICS, false);
 
     boolean forceSoftwareRendering = preferences.getBoolean(PREF_FORCE_SOFTWARE_RENDERING, false);
     if (forceSoftwareRendering) {
@@ -99,7 +103,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     settings.setMixedContentMode(mode);
 
     logRenderState("init", webView.getUrl());
-    if (enableRenderDiagnostics) {
+    if (enableVisualDiagnostics) {
       ensureNativeDiagnosticMarker("init", 0);
     }
     webView.postDelayed(new Runnable() {
@@ -204,14 +208,14 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
   }
 
   private void ensureNativeDiagnosticMarker(final String trigger, final int attempt) {
-    if (!enableRenderDiagnostics || webView == null) {
+    if (!enableVisualDiagnostics || webView == null) {
       return;
     }
 
     webView.post(new Runnable() {
       @Override
       public void run() {
-        if (!enableRenderDiagnostics || webView == null) {
+        if (!enableVisualDiagnostics || webView == null) {
           return;
         }
 
@@ -223,7 +227,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
             webView.postDelayed(new Runnable() {
               @Override
               public void run() {
-                if (enableRenderDiagnostics && webView != null) {
+                if (enableVisualDiagnostics && webView != null) {
                   ensureNativeDiagnosticMarker(trigger, nextAttempt);
                 } else if (nextAttempt >= NATIVE_DIAGNOSTIC_MAX_ATTACH_RETRIES) {
                   Log.w(TAG, "Native diagnostic marker skipped (" + trigger + "): parent unavailable after retries.");
@@ -259,7 +263,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
         if (marker == null) {
           marker = new TextView(webView.getContext());
           marker.setTag(NATIVE_DIAGNOSTIC_TAG);
-          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setText("");
           marker.setTextColor(Color.WHITE);
           marker.setBackgroundColor(Color.rgb(0, 160, 0));
           marker.setTextSize(16);
@@ -276,7 +280,7 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
           parent.addView(marker, params);
           Log.w(TAG, "Native diagnostic marker added (" + trigger + ") attempt=" + attempt);
         } else {
-          marker.setText("NATIVE VIEW IS RENDERING");
+          marker.setText("");
           marker.setTextColor(Color.WHITE);
           marker.setBackgroundColor(Color.rgb(0, 160, 0));
           marker.setTextSize(16);
@@ -327,29 +331,29 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     return Math.max(1, Math.round(dp * density));
   }
 
-  private void runDomDiagnostics(WebView view) {
+  private void runDomDiagnostics(WebView view, boolean includeVisualMarker) {
     if (view == null) {
       return;
     }
 
     String script = "(function() {"
         + "  try {"
+        + "    var includeMarker = " + (includeVisualMarker ? "true" : "false") + ";"
         + "    var markerId = '__ionic_webview_diagnostic';"
         + "    var doc = document;"
         + "    var root = doc && (doc.body || doc.documentElement);"
         + "    var body = doc ? doc.body : null;"
         + "    var html = doc ? doc.documentElement : null;"
-        + "    var marker = doc ? doc.getElementById(markerId) : null;"
-        + "    if (!marker && doc && doc.createElement) {"
+        + "    var marker = includeMarker && doc ? doc.getElementById(markerId) : null;"
+        + "    if (includeMarker && !marker && doc && doc.createElement) {"
         + "      marker = doc.createElement('div');"
         + "      marker.id = markerId;"
         + "    }"
-        + "    if (marker) {"
-        + "      marker.textContent = 'WEBVIEW CONTENT IS RENDERING';"
+        + "    if (includeMarker && marker) {"
+        + "      marker.textContent = '';"
         + "      marker.setAttribute('aria-hidden', 'true');"
         + "      marker.style.cssText = 'position:fixed!important;left:8px!important;right:8px!important;top:8px!important;min-height:48px!important;"
-        + "display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important;background:#ff0000!important;color:#ffffff!important;"
-        + "font-size:20px!important;line-height:1.25!important;font-weight:700!important;text-align:center!important;padding:12px 8px!important;box-sizing:border-box!important;"
+        + "display:block!important;visibility:visible!important;opacity:1!important;z-index:2147483647!important;background:#ff0000!important;box-sizing:border-box!important;"
         + "pointer-events:none!important;margin:0!important;transform:none!important;max-width:none!important;';"
         + "      if (!marker.parentNode && root) {"
         + "        root.appendChild(marker);"
@@ -515,9 +519,11 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
     public void onPageFinished(WebView view, String url) {
       super.onPageFinished(view, url);
       logRenderState("onPageFinished", url);
-      if (enableRenderDiagnostics) {
-        ensureNativeDiagnosticMarker("onPageFinished", 0);
-        runDomDiagnostics(view);
+      if (enableRenderDiagnostics || enableVisualDiagnostics) {
+        if (enableVisualDiagnostics) {
+          ensureNativeDiagnosticMarker("onPageFinished", 0);
+        }
+        runDomDiagnostics(view, enableVisualDiagnostics);
       }
       if (forceRepaint) {
         final WebView finishedView = view;
@@ -541,9 +547,11 @@ public class IonicWebViewEngine extends SystemWebViewEngine {
           }
         });
       }
-      view.loadUrl("javascript:(function() { " +
-              "window.WEBVIEW_SERVER_URL = '" + CDV_LOCAL_SERVER + "';" +
-              "})()");
+      view.evaluateJavascript(
+          "(function() { window.WEBVIEW_SERVER_URL = "
+              + JSONObject.quote(CDV_LOCAL_SERVER)
+              + "; })()",
+          null);
     }
   }
 
